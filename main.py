@@ -17,7 +17,7 @@ from ttkbootstrap.constants import *
 import ttkbootstrap as ttk
 import time
 from datetime import datetime
-from urllib.parse import quote
+from urllib.parse import quote, parse_qs
 from urllib import parse
 import hmac
 from hashlib import sha1
@@ -63,23 +63,24 @@ class HandleOpenapi:
 
     def sign(self, s=None):
         # 排序后url
+        if len(self.path.split('?')) > 1:
+            s = self.path.split('?')[1]
+            self.path = self.path.split('?')[0]
         if s:
             s = HandleOpenapi.encoded_params(param=s)
-            temp_url = self.host + "/" + self.path + "?AccessKeyId=" + self.access_key_id + \
-                "&Expires=" + '86400' + "&Timestamp=" + self.timestamp + "&" + s
+            temp_url = self.host + "/" + self.path + "?AccessKeyId=" + self.access_key_id + "&Expires=" + '86400' + \
+                       "&Timestamp=" + self.timestamp + "&" + s
         else:
-            temp_url = self.host + "/" + self.path + "?AccessKeyId=" + \
-                self.access_key_id + "&Expires=" + '86400' + "&Timestamp=" + self.timestamp
+            temp_url = self.host + "/" + self.path + "?AccessKeyId=" + self.access_key_id + "&Expires=" + '86400' + \
+                       "&Timestamp=" + self.timestamp
         # print("排序编码后url:",temp_url)
         url_param = self.method + temp_url
         # 对签名进行url编码
-        signature = quote(
-            HandleOpenapi.hash_hmac(
-                url_param,
-                self.access_key_secret,
-                sha1))
+        # signature = quote(HandleOpenapi.hash_hmac(url_param, self.access_key_secret, sha1))
+        signature = urlencode({"Signature": HandleOpenapi.hash_hmac(url_param, self.access_key_secret, sha1)})
         # 加上签名后的url
-        result = temp_url + '&Signature=' + signature
+        result = temp_url + '&' + signature
+        # result = temp_url + '&Signature=' + signature
         res = self.protocol + "://" + result
         # print("加上签名后的url:", res)
         return res
@@ -97,12 +98,25 @@ class HandleOpenapi:
 
     @staticmethod
     def encoded_params(param):
-        dic = parse.parse_qs(param)
+        param = HandleOpenapi.sort_params(param=param)
+        dic = parse_qs(param)
         for key in dic:
             s = dic[key][0]
             dic[key] = s
         encoded_data = urlencode(dic)
         return encoded_data
+
+    @staticmethod
+    def sort_params(param):
+        param = param.split('&')
+        param_list = []
+        for i in param:
+            param_list.append(i)
+        param_list.sort()
+        result = ''
+        for i in param_list:
+            result += i + '&'
+        return result[:-1]
 
 
 class MY_GUI():
@@ -110,7 +124,7 @@ class MY_GUI():
     def __init__(self, init_window_name):
 
         self.init_window_name = init_window_name
-        self.init_window_name.title("openapi工具v2.8_小明")  # 窗口名
+        self.init_window_name.title("openapi工具v2.9.2_小明")  # 窗口名
         # 290 160为窗口大小，+10 +10 定义窗口弹出时的默认展示位置
         self.init_window_name.geometry('1200x760+180+10')
         self.init_window_name.maxsize(1200, 760)
@@ -232,7 +246,9 @@ class MY_GUI():
             "api-bj.clink.cn",
             "api-sh.clink.cn",
             'api-bj-test0.clink.cn',
-            'clink2-openapi-dev.clink.cn')
+            'clink2-openapi-dev.clink.cn',
+            'alb-01l5fw2u4lg0sajop3.cn-beijing.alb.aliyuncs.com',
+            'servicecenter.inspur.com:10010')
 
         self.init_env_Text = Entry(
             self.init_window_name,
@@ -245,7 +261,7 @@ class MY_GUI():
             self.init_window_name,
             width=33,)  # height=1)  # 接口地址录入框
         self.init_url_Text.grid(row=4, column=1, rowspan=1,pady=7)
-        self.init_url_Text.insert(0, 'customer_params')  # debug用
+        # self.init_url_Text.insert(0, 'customer_params')  # debug用
 
         # 下拉框
         cv2 = tkinter.StringVar()
@@ -269,14 +285,13 @@ class MY_GUI():
             self.init_window_name,
             width=33,)  # 秘钥
         self.init_aks_Text.grid(row=7, column=1, rowspan=1,pady=7)
-        self.init_aks_Text.insert(0, '5XNS2km5KIf1274Ji3Ph')  # debug用
+        # self.init_aks_Text.insert(0, '5XNS2km5KIf1274Ji3Ph')  # debug用
 
         self.init_aki_Text = Entry(
             self.init_window_name,
             width=33,)  # 秘钥ID录入框
         self.init_aki_Text.grid(row=8, column=1, rowspan=1,pady=7)
-        self.init_aki_Text.insert(
-            0, '2fb070dab1937d9451fbd4cb444b444f')  # debug用
+        # self.init_aki_Text.insert( 0, '2fb070dab1937d9451fbd4cb444b444f')  # debug用
 
         # 下拉框
         cv2 = tkinter.StringVar()
